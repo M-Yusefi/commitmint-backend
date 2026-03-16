@@ -1,0 +1,6 @@
+@echo off
+echo Starting Laravel server...
+start cmd /k php artisan serve
+
+echo Starting Cloudflare tunnel...
+start cmd /k C:\cloudflared\cloudflared-windows-amd64.exe tunnel --url http://127.0.0.1:8000
