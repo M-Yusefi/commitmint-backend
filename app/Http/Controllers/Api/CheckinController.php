@@ -14,9 +14,9 @@ class CheckinController extends Controller
     {
         // Prevent duplicate check-in for today 
             $alreadyCheckedIn = Checkin::where('user_id', $user->id)
-                                    ->where('goal_id', $goal->id)
-                                    ->whereDate('date', Carbon::now()) 
-                                    ->exists();
+                                       ->where('goal_id', $goal->id)
+                                       ->whereDate('date', Carbon::now()) 
+                                       ->exists();
 
             if ($alreadyCheckedIn) {
                 return response()->json([
@@ -62,7 +62,5 @@ class CheckinController extends Controller
             'promise' => $validated['promise'],
             'mood'    => $validated['mood']
         ]);
-
-
     }
 }
