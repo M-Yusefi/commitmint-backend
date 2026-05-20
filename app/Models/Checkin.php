@@ -13,10 +13,16 @@ class Checkin extends Model
 
     protected $fillable = [
         'goal_id',
-        'week_number',
-        'completed',
-        'answers',
-        'checked_at'
+        'date',
+        'done',
+        'prod',
+        'focus',
+        'honest',
+        'opinion',
+        'improve',
+        'reason',
+        'promise',
+        'mood',
     ];
     
     public function goal() 

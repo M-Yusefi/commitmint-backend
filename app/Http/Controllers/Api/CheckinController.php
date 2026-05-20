@@ -12,31 +12,29 @@ class CheckinController extends Controller
 {
     public function checkin(Request $request, Goal $goal)
     {
-        // Prevent duplicate check-in for today 
-            $alreadyCheckedIn = Checkin::where('user_id', $user->id)
-                                       ->where('goal_id', $goal->id)
-                                       ->whereDate('date', Carbon::now()) 
-                                       ->exists();
+        $today = Carbon::now()->dayOfWeek;
 
-            if ($alreadyCheckedIn) {
-                return response()->json([
-                    'message' => 'Already checked in today',
-                    'goal' => $goal
-                ]);
-            }
-        // end check
+        $alreadyCheckedIn = Checkin::where('goal_id', $goal->id)
+                                   ->whereDate('date', Carbon::today())
+                                   ->exists();
 
-        // Ensure today is a valid check-in day 
-            $today = Carbon::parse()->dayOfWeek();
-            $selected_days = $goal->selected_days;
-            if (!in_array($today, $selected_days)) {
-                return response()->json([
-                    'message' => 'Not allowed',
-                    'goal' => $goal
-                ]);
-            }
-        // end check
+        if ($alreadyCheckedIn) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Already checked in today.',
+                'goal'    => $goal,
+            ], 409);
+        }
 
+        $selectedDays = $goal->selected_days ?? [];
+
+        if (!in_array($today, $selectedDays, true)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Check-in is not allowed today.',
+                'goal'    => $goal,
+            ], 403);
+        }
 
         $validated = $request->validate([
             'done'     => 'required|boolean',
@@ -47,20 +45,28 @@ class CheckinController extends Controller
             'reason'   => 'required_if:done,false|string|max:255',
             'honest'   => 'required|integer|min:1|max:5',
             'promise'  => 'nullable|string|max:255',
-            'mood'     => 'nullable|string|max:50',            
+            'mood'     => 'nullable|string|max:50',
         ]);
 
         $checkIn = Checkin::create([
             'goal_id' => $goal->id,
+            'date'    => Carbon::today()->toDateString(),
             'done'    => $validated['done'],
             'prod'    => $validated['prod'],
             'focus'   => $validated['focus'],
-            'opinion' => $validated['opinion'],
-            'improve' => $validated['improve'],
-            'reason'  => $validated['reason'],
+            'opinion' => $validated['opinion'] ?? null,
+            'improve' => $validated['improve'] ?? null,
+            'reason'  => $validated['reason'] ?? null,
             'honest'  => $validated['honest'],
-            'promise' => $validated['promise'],
-            'mood'    => $validated['mood']
+            'promise' => $validated['promise'] ?? null,
+            'mood'    => $validated['mood'] ?? null,
         ]);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Check-in saved successfully.',
+            'checkin' => $checkIn,
+            'goal'    => $goal,
+        ], 201);
     }
 }

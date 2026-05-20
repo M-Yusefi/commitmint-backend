@@ -35,8 +35,9 @@ class GoalController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'success',
-            'goal'    => $goal
+            'status'  => 'success',
+            'message' => 'Goal created successfully.',
+            'goal'    => $goal,
         ], 201);
     }
     
@@ -48,8 +49,9 @@ class GoalController extends Controller
         $goals = Goal::where('user_id', $user_id)->get();
 
         return response()->json([
-            'message' => 'success',
-            'goals'    => $goals
+            'status'  => 'success',
+            'message' => 'Goals retrieved successfully.',
+            'goals'   => $goals,
         ]);
     }
 }

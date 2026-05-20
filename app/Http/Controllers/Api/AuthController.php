@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rules;
 use App\Models\User;
 
@@ -45,16 +44,18 @@ class AuthController extends Controller
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['De ingevoerde gegevens zijn incorrect.'],
-            ]);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'The provided credentials are incorrect.'
+            ], 401);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
-            'user'  => $user,
-            'token' => $token
+            'user'   => $user,
+            'token'  => $token,
+            'status' => 'success'
         ]);
     }
 
@@ -62,7 +63,10 @@ class AuthController extends Controller
     // User Info function 
     public function user(Request $request)
     {
-        return response()->json($request->user());
+        return response()->json([
+            'status' => 'success',
+            'user'   => $request->user(),
+        ]);
     }
 
 
@@ -72,7 +76,8 @@ class AuthController extends Controller
         $request->user()->tokens()->delete();
 
         return response()->json([
-            'message' => 'Succesvol uitgelogd'
+            'status'  => 'success',
+            'message' => 'Logged out Successfully ',
         ]);
     }
 }
