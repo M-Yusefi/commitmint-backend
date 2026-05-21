@@ -18,7 +18,7 @@ class GoalController extends Controller
             'duration_weeks'  => 'required|integer|min:1',
             'start_date'      => 'required|date',
             'stake_amount'    => 'required|integer|min:1',
-            'agreed_to_rules' => 'required|boolean'
+            'agreed_to_rules' => 'required|boolean|in:1,true'
         ]);
 
 

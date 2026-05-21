@@ -16,4 +16,8 @@ Route::middleware(['auth:sanctum'])->group( function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/store', [GoalController::class,'store']);
     Route::get('/index', [GoalController::class, 'index']);
+
+    Route::post('/goal_store', [GoalController::class, 'store']);
+    Route::get('/goal_index', [GoalController::class, 'index']);
 });
+
