@@ -16,7 +16,11 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'password' => ['required', 'confirmed', Rules\Password::defaults()->mixedCase()->numbers()->symbols()],
+        ], [
+            'password.required'  => 'The password field is required.',
+            'password.confirmed' => 'The password confirmation does not match.',
+            'password.password'  => 'The password must contain at least one uppercase letter, one number, and one special character.',
         ]);
 
         $user = User::create([
@@ -38,7 +42,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email'    => 'required|email',
-            'password' => 'required'
+            'password' => 'required'    
         ]);
 
         $user = User::where('email', $request->email)->first();
