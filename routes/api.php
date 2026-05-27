@@ -7,17 +7,24 @@ use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\CheckinController;
 
 
-// Piblic Routes
+// Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware(['auth:sanctum'])->group( function () {
-    Route::get('/user', [AuthController::class, 'user']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/store', [GoalController::class,'store']);
-    Route::get('/index', [GoalController::class, 'index']);
+Route::middleware(['auth:sanctum'])->group(function () {
+    Route::prefix('user')->group(function () {
+        Route::get('/', [AuthController::class, 'user']);
+        Route::post('/update', [AuthController::class, 'update']);
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::delete('/delete', [AuthController::class, 'delete']);
+    });
 
-    Route::post('/goal_store', [GoalController::class, 'store']);
-    Route::get('/goal_index', [GoalController::class, 'index']);
+    Route::prefix('goal')->group(function () {
+        Route::post('/store', [GoalController::class, 'store']);
+        Route::get('/index', [GoalController::class, 'index']);
+    });
+
+    Route::prefix('checkin')->group(function () {
+        Route::post('/store', [CheckinController::class, 'store']);
+    });
 });
-

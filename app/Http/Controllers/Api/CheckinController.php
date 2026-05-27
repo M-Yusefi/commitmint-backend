@@ -10,7 +10,7 @@ use Carbon\Carbon;
 
 class CheckinController extends Controller
 {
-    public function checkin(Request $request, Goal $goal)
+    public function store(Request $request, Goal $goal)
     {
         $today = Carbon::now()->dayOfWeek;
 
