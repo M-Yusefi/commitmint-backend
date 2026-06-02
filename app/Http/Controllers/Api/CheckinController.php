@@ -26,16 +26,6 @@ class CheckinController extends Controller
             ], 409);
         }
 
-        $selectedDays = $goal->selected_days ?? [];
-
-        if (!in_array($today, $selectedDays, true)) {
-            return response()->json([
-                'status'  => 'error',
-                'message' => 'Check-in is not allowed today.',
-                'goal'    => $goal,
-            ], 403);
-        }
-
         $validated = $request->validate([
             'done'     => 'required|boolean',
             'prod'     => 'required|integer|min:1|max:5',

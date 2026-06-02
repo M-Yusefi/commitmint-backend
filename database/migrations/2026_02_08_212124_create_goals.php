@@ -12,10 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('title');
-            $table->string('category');
-            $table->json('selected_days');
+            $table->unsignedTinyInteger('times_per_week');
             $table->unsignedTinyInteger('duration_weeks');
-            $table->date('start_date');
             $table->decimal('stake_amount', 8, 2);
             $table->boolean('agreed_to_rules');
             $table->enum('status', ['pending','active','completed','failed'])->default('pending');

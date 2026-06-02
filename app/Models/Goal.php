@@ -12,7 +12,8 @@ class Goal extends Model
     use HasFactory;
 
     protected $casts =[
-        'selected_days' => 'array',
+        'times_per_week' => 'integer',
+        'duration_weeks' => 'integer',
         'agreed_to_rules' => 'boolean',
         'stake_amount' => 'float',
     ];
@@ -20,10 +21,8 @@ class Goal extends Model
     protected $fillable = [
         'user_id',
         'title',
-        'category',
-        'selected_days',
+        'times_per_week',
         'duration_weeks',
-        'start_date',
         'stake_amount',
         'agreed_to_rules',
         'status'

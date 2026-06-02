@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Goal;
-use Carbon\Carbon;
 
 class GoalController extends Controller
 {
@@ -13,25 +12,21 @@ class GoalController extends Controller
     {
         $validated = $request->validate([
             'title'           => 'required|string|max:255',
-            'category'        => 'required|string',
-            'selected_days'   => 'required|array',
-            'duration_weeks'  => 'required|integer|min:1',
-            'start_date'      => 'required|date',
-            'stake_amount'    => 'required|integer|min:1',
-            'agreed_to_rules' => 'required|boolean|in:1,true'
+            'times_per_week'  => 'required|integer|min:1|max:7',
+            'duration_weeks'  => 'required|integer|min:1|max:52',
+            'stake_amount'    => 'required|numeric|min:1',
+            'agreed_to_rules' => 'required|accepted',
         ]);
 
 
         $goal = Goal::create([
             'user_id'         => auth()->id(),
             'title'           => $validated['title'],
-            'category'        => $validated['category'],
-            'selected_days'   => $validated['selected_days'],
+            'times_per_week'  => $validated['times_per_week'],
             'duration_weeks'  => $validated['duration_weeks'],
-            'start_date'      => $validated['start_date'],
             'stake_amount'    => $validated['stake_amount'],
             'agreed_to_rules' => $validated['agreed_to_rules'],
-            'status'          => Carbon::parse($validated['start_date'])->isToday() ? 'active' : 'pending'
+            'status'          => 'active'
         ]);
 
         return response()->json([
