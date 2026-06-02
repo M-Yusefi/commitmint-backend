@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Validator;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -13,7 +14,7 @@ class AuthController extends Controller
     // User register function 
     public function register(Request $request)
     {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name'     => ['required', 'string', 'max:255'],
             'email'    => ['required', 'string', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()->mixedCase()->numbers()->symbols()],
@@ -22,6 +23,16 @@ class AuthController extends Controller
             'password.confirmed' => 'The password confirmation does not match.',
             'password.password'  => 'The password must contain at least one uppercase letter, one number, and one special character.',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Please check the highlighted fields.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
 
         $user = User::create([
             'name'     => $validated['name'],
