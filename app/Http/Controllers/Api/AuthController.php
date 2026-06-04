@@ -133,8 +133,15 @@ class AuthController extends Controller
     // Quote function
     public function quote()
     {
+        $quote = Inspiring::quote();
+        $quote = preg_replace('/<[^>]*>/', '', $quote);
+        $quote = trim($quote);
+
+        $parts = preg_split('/\n\s*/', $quote);
+
         return response()->json([
-            'quote' => Inspiring::quote(),
+            'text' => trim($parts[0] ?? ''),
+            'author' => trim($parts[1] ?? ''),
         ]);
     }
 }
