@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CheckinController;
 // Public Routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/quote', [AuthController::class, 'quote']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::prefix('user')->group(function () {

@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Foundation\Inspiring;
 use App\Models\User;
 
 class AuthController extends Controller
@@ -51,17 +52,38 @@ class AuthController extends Controller
     // User login function 
     public function login(Request $request)
     {
-        $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required'    
+        $validator = Validator::make($request->all(), [
+            'email'    => ['required', 'email'],
+            'password' => ['required']
+        ], [
+            'email.required'    => 'The email field is required.',
+            'email.email'       => 'The email must be a valid email address.',
+            'password.required' => 'The password field is required.',
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Please check the highlighted fields.',
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'The provided credentials are incorrect.'
+                'message' => 'The provided email is incorrect.',
+                'errors'  => ['email' => ['The provided email is incorrect.']]
+            ], 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'The provided password is incorrect.',
+                'errors'  => ['password' => ['The provided password is incorrect.']]
             ], 401);
         }
 
@@ -105,6 +127,14 @@ class AuthController extends Controller
         return response()->json([
             'status'  => 'success',
             'message' => 'Your account has been deleted'
+        ]);
+    }
+
+    // Quote function
+    public function quote()
+    {
+        return response()->json([
+            'quote' => Inspiring::quote(),
         ]);
     }
 }
