@@ -11,16 +11,12 @@ return new class extends Migration
         Schema::create('checkins', function (Blueprint $table) {
             $table->id();
             $table->foreignId('goal_id')->constrained()->cascadeOnDelete();
-            $table->date('date'); 
+            $table->date('date');
             $table->boolean('done');
-            $table->unsignedTinyInteger('prod');     
-            $table->unsignedTinyInteger('focus');    
-            $table->unsignedTinyInteger('honest');   
-            $table->string('opinion')->nullable();   
-            $table->string('improve')->nullable();   
-            $table->string('reason')->nullable();    
-            $table->string('promise')->nullable();   
-            $table->string('mood')->nullable();      
+            $table->unsignedTinyInteger('productivity');
+            $table->unsignedTinyInteger('focus');
+            $table->unsignedTinyInteger('honesty');
+            $table->string('reason')->nullable();
             $table->timestamps();
             $table->unique(['goal_id', 'date']);
         });    

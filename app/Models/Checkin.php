@@ -15,23 +15,14 @@ class Checkin extends Model
         'goal_id',
         'date',
         'done',
-        'prod',
+        'productivity',
         'focus',
-        'honest',
-        'opinion',
-        'improve',
+        'honesty',
         'reason',
-        'promise',
-        'mood',
     ];
     
     public function goal() 
     {
         return $this->belongsTo(Goal::class);
-    }
-
-    public function user() 
-    {
-        return $this->belongsTo(User::class);
     }
 }
