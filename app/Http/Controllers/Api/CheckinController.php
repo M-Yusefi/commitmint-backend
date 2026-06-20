@@ -42,11 +42,30 @@ class CheckinController extends Controller
             'reason'       => $validated['reason'] ?? null,
         ]);
 
+        $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
+        $completedCheckins = Checkin::where('goal_id', $goal->id)->count();
+        $progressValue = round($completedCheckins / $totalCheckins, 6);
+
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Check-in saved successfully.',
-            'checkin' => $checkIn,
-            'goal'    => $goal,
-        ], 201);
+            'status'   => 'success',
+            'message'  => 'Check-in saved successfully.',
+            'checkin'  => $checkIn,
+            'goal'     => $goal,
+            'progress' => [
+                'completed'      => $completedCheckins,
+                'total'          => $totalCheckins,
+                'progress_value' => $progressValue,
+            ],
+        ], 201);    
+    }
+
+    public function goals(Request $request)
+    {
+        $goals = Goal::where('user_id', Auth()->id())->get();
+
+        return response()->json([
+            'status' => 'success',
+            'goals' => $goals
+        ]);
     }
 }
