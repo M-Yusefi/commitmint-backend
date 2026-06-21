@@ -12,15 +12,41 @@ class CheckinController extends Controller
 {
     public function store(Request $request, Goal $goal)
     {
-        $alreadyCheckedIn = Checkin::where('goal_id', $goal->id)
-                                   ->whereDate('date', Carbon::today())
-                                   ->exists();
-
-        if ($alreadyCheckedIn) {
+        if ($goal->user_id !== auth()->id()) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Already checked in today.',
-                'goal'    => $goal,
+                'message' => 'Unauthorized goal.',
+            ], 403);
+        }
+
+        $today = Carbon::today();
+        $tomorrow = Carbon::tomorrow();
+        $weekStart = Carbon::now()->startOfWeek();
+        $weekEnd = Carbon::now()->endOfWeek();
+
+        $dailyCheckinExists = Checkin::where('goal_id', $goal->id)
+                                     ->whereDate('date', $today)
+                                     ->exists();
+
+        if ($dailyCheckinExists) {
+            return response()->json([
+                'status'           => 'error',
+                'message'          => 'Already checked in today.',
+                'next_checkin_at'  => $tomorrow->toDateString(),
+                'goal'             => $goal,
+            ], 409);
+        }
+
+        $weeklyCheckins = Checkin::where('goal_id', $goal->id)
+                                 ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                                 ->count();
+
+        if ($weeklyCheckins >= $goal->times_per_week) {
+            return response()->json([
+                'status'           => 'error',
+                'message'          => 'Weekly checkin limit reached.',
+                'next_checkin_at'  => $weekStart->addWeek()->toDateString(),
+                'goal'             => $goal,
             ], 409);
         }
 
@@ -43,14 +69,16 @@ class CheckinController extends Controller
         ]);
 
         $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
-        $completedCheckins = Checkin::where('goal_id', $goal->id)->count();
+        $completedCheckins = Checkin::where('goal_id', $goal->id)->count(); 
         $progressValue = round($completedCheckins / $totalCheckins, 6);
 
         return response()->json([
-            'status'   => 'success',
-            'message'  => 'Check-in saved successfully.',
-            'checkin'  => $checkIn,
-            'goal'     => $goal,
+            'status'            => 'success',
+            'message'           => 'Check-in saved successfully.',
+            'checkin'           => $checkIn,
+            'goal'              => $goal,
+            'next_checkin_at'   => $tomorrow->toDateString(),
+            'weekly_remaining'  => max(0, $goal->times_per_week - ($weeklyCheckins + 1)),
             'progress' => [
                 'completed'      => $completedCheckins,
                 'total'          => $totalCheckins,
@@ -59,13 +87,94 @@ class CheckinController extends Controller
         ], 201);    
     }
 
-    public function goals(Request $request)
+    public function index(Request $request, Goal $goal)
     {
-        $goals = Goal::where('user_id', Auth()->id())->get();
+        if ($goal->user_id !== auth()->id()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unauthorized goal.',
+            ], 403);
+        }
+
+        $checkins = Checkin::where('goal_id', $goal->id)
+                          ->orderBy('date', 'desc')
+                          ->get();
 
         return response()->json([
-            'status' => 'success',
-            'goals' => $goals
+            'status'   => 'success',
+            'message'  => 'Check-ins retrieved successfully.',
+            'checkins' => $checkins,
+            'goal'     => $goal,
+        ]);
+    }
+
+    public function show(Goal $goal, Checkin $checkin)
+    {
+        if ($goal->user_id !== auth()->id()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unauthorized goal.',
+            ], 403);
+        }
+
+        if ($checkin->goal_id !== $goal->id) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Checkin not found for this goal.',
+            ], 404);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'checkin' => $checkin,
+            'goal'    => $goal,
+        ]);
+    }
+
+    public function stats(Goal $goal)
+    {
+        if ($goal->user_id !== auth()->id()) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Unauthorized goal.',
+            ], 403);
+        }
+
+        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+        $totalCheckins = count($allCheckins);
+
+        $avgProductivity = $totalCheckins > 0 
+            ? round($allCheckins->avg('productivity'), 2) 
+            : 0;
+
+        $avgFocus = $totalCheckins > 0 
+            ? round($allCheckins->avg('focus'), 2) 
+            : 0;
+
+        $avgHonesty = $totalCheckins > 0 
+            ? round($allCheckins->avg('honesty'), 2) 
+            : 0;
+
+        $completedGoals = $allCheckins->where('done', true)->count();
+        $completionRate = $totalCheckins > 0 
+            ? round(($completedGoals / $totalCheckins) * 100, 2) 
+            : 0;
+
+        $daysCompleted = $allCheckins->count();
+        $goalProgress = ($daysCompleted / ($goal->times_per_week * $goal->duration_weeks)) * 100;
+
+        return response()->json([
+            'status'   => 'success',
+            'goal'     => $goal,
+            'stats'    => [
+                'total_checkins'    => $totalCheckins,
+                'completed_goals'   => $completedGoals,
+                'completion_rate'   => $completionRate . '%',
+                'avg_productivity'  => $avgProductivity,
+                'avg_focus'         => $avgFocus,
+                'avg_honesty'       => $avgHonesty,
+                'goal_progress'     => round($goalProgress, 2) . '%',
+            ],
         ]);
     }
 }

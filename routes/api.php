@@ -26,6 +26,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     });
 
     Route::prefix('checkin')->group(function () {
-        Route::post('/store', [CheckinController::class, 'store']);
+        Route::post('/store/{goal}', [CheckinController::class, 'store']);
+        Route::get('/{goal}', [CheckinController::class, 'index']);
+        Route::get('/{goal}/checkin/{checkin}', [CheckinController::class, 'show']);
+        Route::get('/{goal}/stats', [CheckinController::class, 'stats']);
     });
 });
