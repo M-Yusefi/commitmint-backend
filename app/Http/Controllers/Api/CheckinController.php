@@ -33,7 +33,6 @@ class CheckinController extends Controller
                 'status'           => 'error',
                 'message'          => 'Already checked in today.',
                 'next_checkin_at'  => $tomorrow->format('d/m/Y'),
-                'goal'             => $goal,
             ], 409);
         }
 
@@ -46,7 +45,6 @@ class CheckinController extends Controller
                 'status'           => 'error',
                 'message'          => 'Weekly checkin limit reached.',
                 'next_checkin_at'  => $weekStart->addWeek()->format('d/m/Y'),
-                'goal'             => $goal,
             ], 409);
         }
 
@@ -72,6 +70,14 @@ class CheckinController extends Controller
         $completedCheckins = Checkin::where('goal_id', $goal->id)->count(); 
         $progressValue = round($completedCheckins / $totalCheckins, 6);
 
+        // Calculate stake per checkin and earnings/losses
+        $stakePerCheckin = $goal->stake_amount / $totalCheckins;
+        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+        $completedCount = $allCheckins->where('done', true)->count();
+        $missedCount = $allCheckins->where('done', false)->count();
+        $earned = $completedCount * $stakePerCheckin;
+        $lost = $missedCount * $stakePerCheckin;
+
         return response()->json([
             'status'            => 'success',
             'message'           => 'Check-in saved successfully.',
@@ -82,6 +88,14 @@ class CheckinController extends Controller
                 'completed'      => $completedCheckins,
                 'total'          => $totalCheckins,
                 'progress_value' => $progressValue,
+            ],
+            'stake' => [
+                'total_stake'       => $goal->stake_amount,
+                'stake_per_checkin' => round($stakePerCheckin, 2),
+                'completed_count'   => $completedCount,
+                'missed_count'      => $missedCount,
+                'earned'            => round($earned, 2),
+                'lost'              => round($lost, 2),
             ],
         ], 201);    
     }
@@ -162,6 +176,14 @@ class CheckinController extends Controller
         $daysCompleted = $allCheckins->count();
         $goalProgress = ($daysCompleted / ($goal->times_per_week * $goal->duration_weeks)) * 100;
 
+        // Calculate stake per checkin and earnings/losses
+        $totalStakeCheckins = $goal->times_per_week * $goal->duration_weeks;
+        $stakePerCheckin = $totalStakeCheckins > 0 ? $goal->stake_amount / $totalStakeCheckins : 0;
+        $completedCount = $allCheckins->where('done', true)->count();
+        $missedCount = $allCheckins->where('done', false)->count();
+        $earned = $completedCount * $stakePerCheckin;
+        $lost = $missedCount * $stakePerCheckin;
+
         return response()->json([
             'status'   => 'success',
             'goal'     => $goal,
@@ -173,6 +195,14 @@ class CheckinController extends Controller
                 'avg_focus'         => $avgFocus,
                 'avg_honesty'       => $avgHonesty,
                 'goal_progress'     => round($goalProgress, 2) . '%',
+            ],
+            'stake' => [
+                'total_stake'       => $goal->stake_amount,
+                'stake_per_checkin' => round($stakePerCheckin, 2),
+                'completed_count'   => $completedCount,
+                'missed_count'      => $missedCount,
+                'earned'            => round($earned, 2),
+                'lost'              => round($lost, 2),
             ],
         ]);
     }
