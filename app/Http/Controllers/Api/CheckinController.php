@@ -32,7 +32,7 @@ class CheckinController extends Controller
             return response()->json([
                 'status'           => 'error',
                 'message'          => 'Already checked in today.',
-                'next_checkin_at'  => $tomorrow->toDateString(),
+                'next_checkin_at'  => $tomorrow->format('d/m/Y'),
                 'goal'             => $goal,
             ], 409);
         }
@@ -45,7 +45,7 @@ class CheckinController extends Controller
             return response()->json([
                 'status'           => 'error',
                 'message'          => 'Weekly checkin limit reached.',
-                'next_checkin_at'  => $weekStart->addWeek()->toDateString(),
+                'next_checkin_at'  => $weekStart->addWeek()->format('d/m/Y'),
                 'goal'             => $goal,
             ], 409);
         }
@@ -76,8 +76,7 @@ class CheckinController extends Controller
             'status'            => 'success',
             'message'           => 'Check-in saved successfully.',
             'checkin'           => $checkIn,
-            'goal'              => $goal,
-            'next_checkin_at'   => $tomorrow->toDateString(),
+            'next_checkin_at'   => $tomorrow->format('d/m/Y'),
             'weekly_remaining'  => max(0, $goal->times_per_week - ($weeklyCheckins + 1)),
             'progress' => [
                 'completed'      => $completedCheckins,
