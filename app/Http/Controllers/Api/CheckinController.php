@@ -10,6 +10,53 @@ use Carbon\Carbon;
 
 class CheckinController extends Controller
 {
+    private function calculateGoalStats($goal)
+    {
+        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+        $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
+        $completedCheckins = $allCheckins->count();
+        
+        $progressValue = $totalCheckins > 0 ? round($completedCheckins / $totalCheckins, 6) : 0;
+        
+        $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
+        $completedCount = $allCheckins->where('done', true)->count();
+        $missedCount = $allCheckins->where('done', false)->count();
+        $earned = $completedCount * $stakePerCheckin;
+        $lost = $missedCount * $stakePerCheckin;
+        
+        // Calculate missed days (days without any checkin)
+        $goalCreatedDate = Carbon::parse($goal->created_at)->startOfDay();
+        $today = Carbon::today();
+        $missedDays = 0;
+        $lostFromMissedDays = 0;
+        
+        for ($date = $goalCreatedDate; $date->lte($today); $date->addDay()) {
+            $checkinExists = $allCheckins->where('date', $date->toDateString())->count() > 0;
+            if (!$checkinExists) {
+                $missedDays++;
+                $lostFromMissedDays += $stakePerCheckin;
+            }
+        }
+        
+        return [
+            'progress' => [
+                'completed' => $completedCheckins,
+                'total' => $totalCheckins,
+                'progress_value' => $progressValue,
+            ],
+            'stake' => [
+                'total_stake' => $goal->stake_amount,
+                'stake_per_checkin' => round($stakePerCheckin, 2),
+                'completed_count' => $completedCount,
+                'missed_count' => $missedCount,
+                'earned' => round($earned, 2),
+                'lost' => round($lost, 2),
+                'lost_from_missed_days' => round($lostFromMissedDays, 2),
+            ],
+            'missed_days' => $missedDays,
+        ];
+    }
+
     public function store(Request $request, Goal $goal)
     {
         if ($goal->user_id !== auth()->id()) {
@@ -66,17 +113,7 @@ class CheckinController extends Controller
             'reason'       => $validated['reason'] ?? null,
         ]);
 
-        $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
-        $completedCheckins = Checkin::where('goal_id', $goal->id)->count(); 
-        $progressValue = round($completedCheckins / $totalCheckins, 6);
-
-        // Calculate stake per checkin and earnings/losses
-        $stakePerCheckin = $goal->stake_amount / $totalCheckins;
-        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
-        $completedCount = $allCheckins->where('done', true)->count();
-        $missedCount = $allCheckins->where('done', false)->count();
-        $earned = $completedCount * $stakePerCheckin;
-        $lost = $missedCount * $stakePerCheckin;
+        $stats = $this->calculateGoalStats($goal);
 
         return response()->json([
             'status'            => 'success',
@@ -84,19 +121,9 @@ class CheckinController extends Controller
             'checkin'           => $checkIn,
             'next_checkin_at'   => $tomorrow->format('d/m/Y'),
             'weekly_remaining'  => max(0, $goal->times_per_week - ($weeklyCheckins + 1)),
-            'progress' => [
-                'completed'      => $completedCheckins,
-                'total'          => $totalCheckins,
-                'progress_value' => $progressValue,
-            ],
-            'stake' => [
-                'total_stake'       => $goal->stake_amount,
-                'stake_per_checkin' => round($stakePerCheckin, 2),
-                'completed_count'   => $completedCount,
-                'missed_count'      => $missedCount,
-                'earned'            => round($earned, 2),
-                'lost'              => round($lost, 2),
-            ],
+            'progress'          => $stats['progress'],
+            'stake'             => $stats['stake'],
+            'missed_days'       => $stats['missed_days'],
         ], 201);    
     }
 
@@ -176,13 +203,7 @@ class CheckinController extends Controller
         $daysCompleted = $allCheckins->count();
         $goalProgress = ($daysCompleted / ($goal->times_per_week * $goal->duration_weeks)) * 100;
 
-        // Calculate stake per checkin and earnings/losses
-        $totalStakeCheckins = $goal->times_per_week * $goal->duration_weeks;
-        $stakePerCheckin = $totalStakeCheckins > 0 ? $goal->stake_amount / $totalStakeCheckins : 0;
-        $completedCount = $allCheckins->where('done', true)->count();
-        $missedCount = $allCheckins->where('done', false)->count();
-        $earned = $completedCount * $stakePerCheckin;
-        $lost = $missedCount * $stakePerCheckin;
+        $stats = $this->calculateGoalStats($goal);
 
         return response()->json([
             'status'   => 'success',
@@ -195,15 +216,10 @@ class CheckinController extends Controller
                 'avg_focus'         => $avgFocus,
                 'avg_honesty'       => $avgHonesty,
                 'goal_progress'     => round($goalProgress, 2) . '%',
+                'missed_days'       => $stats['missed_days'],
             ],
-            'stake' => [
-                'total_stake'       => $goal->stake_amount,
-                'stake_per_checkin' => round($stakePerCheckin, 2),
-                'completed_count'   => $completedCount,
-                'missed_count'      => $missedCount,
-                'earned'            => round($earned, 2),
-                'lost'              => round($lost, 2),
-            ],
+            'progress'  => $stats['progress'],
+            'stake'     => $stats['stake'],
         ]);
     }
 }

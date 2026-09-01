@@ -5,9 +5,58 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Goal;
+use App\Models\Checkin;
+use Carbon\Carbon;
 
 class GoalController extends Controller
 {
+    private function calculateGoalStats($goal)
+    {
+        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+        $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
+        $completedCheckins = $allCheckins->count();
+        
+        $progressValue = $totalCheckins > 0 ? round($completedCheckins / $totalCheckins, 6) : 0;
+        
+        $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
+        $completedCount = $allCheckins->where('done', true)->count();
+        $missedCount = $allCheckins->where('done', false)->count();
+        $earned = $completedCount * $stakePerCheckin;
+        $lost = $missedCount * $stakePerCheckin;
+        
+        // Calculate missed days (days without any checkin)
+        $goalCreatedDate = Carbon::parse($goal->created_at)->startOfDay();
+        $today = Carbon::today();
+        $missedDays = 0;
+        $lostFromMissedDays = 0;
+        
+        for ($date = $goalCreatedDate; $date->lte($today); $date->addDay()) {
+            $checkinExists = $allCheckins->where('date', $date->toDateString())->count() > 0;
+            if (!$checkinExists) {
+                $missedDays++;
+                $lostFromMissedDays += $stakePerCheckin;
+            }
+        }
+        
+        return [
+            'progress' => [
+                'completed' => $completedCheckins,
+                'total' => $totalCheckins,
+                'progress_value' => $progressValue,
+            ],
+            'stake' => [
+                'total_stake' => $goal->stake_amount,
+                'stake_per_checkin' => round($stakePerCheckin, 2),
+                'completed_count' => $completedCount,
+                'missed_count' => $missedCount,
+                'earned' => round($earned, 2),
+                'lost' => round($lost, 2),
+                'lost_from_missed_days' => round($lostFromMissedDays, 2),
+            ],
+            'missed_days' => $missedDays,
+        ];
+    }
+
     public function store(Request $request) 
     {
         $validated = $request->validate([
@@ -43,10 +92,45 @@ class GoalController extends Controller
 
         $goals = Goal::where('user_id', $user_id)->get();
 
+        $goalsWithStats = $goals->map(function($goal) {
+            $stats = $this->calculateGoalStats($goal);
+            
+            // Calculate weekly remaining
+            $weekStart = Carbon::now()->startOfWeek();
+            $weekEnd = Carbon::now()->endOfWeek();
+            $weeklyCheckinsThisWeek = Checkin::where('goal_id', $goal->id)
+                                            ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                                            ->count();
+            $weeklyRemaining = max(0, $goal->times_per_week - $weeklyCheckinsThisWeek);
+            
+            // Calculate next checkin
+            $dailyCheckinExists = Checkin::where('goal_id', $goal->id)
+                                        ->whereDate('date', Carbon::today())
+                                        ->exists();
+            $nextCheckinAt = $dailyCheckinExists ? Carbon::tomorrow()->format('d/m/Y') : Carbon::today()->format('d/m/Y');
+            
+            return [
+                'id' => $goal->id,
+                'user_id' => $goal->user_id,
+                'title' => $goal->title,
+                'times_per_week' => $goal->times_per_week,
+                'duration_weeks' => $goal->duration_weeks,
+                'stake_amount' => $goal->stake_amount,
+                'status' => $goal->status,
+                'created_at' => $goal->created_at,
+                'updated_at' => $goal->updated_at,
+                'progress' => $stats['progress'],
+                'stake' => $stats['stake'],
+                'missed_days' => $stats['missed_days'],
+                'next_checkin_at' => $nextCheckinAt,
+                'weekly_remaining' => $weeklyRemaining,
+            ];
+        });
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Goals retrieved successfully.',
-            'goals'   => $goals,
+            'goals'   => $goalsWithStats,
         ]);
     }
 }
