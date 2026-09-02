@@ -106,21 +106,26 @@ class GoalController extends Controller
                 $currentStatus = 'completed';
             }
             
-            // Calculate weekly remaining
-            $weekStart = Carbon::now()->startOfWeek();
-            $weekEnd = Carbon::now()->endOfWeek();
-            $weeklyCheckinsThisWeek = Checkin::where('goal_id', $goal->id)
-                                            ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
-                                            ->count();
-            $weeklyRemaining = max(0, $goal->times_per_week - $weeklyCheckinsThisWeek);
+            // Calculate weekly remaining and next checkin only for active goals
+            $weeklyRemaining = null;
+            $nextCheckinAt = null;
             
-            // Calculate next checkin
-            $dailyCheckinExists = Checkin::where('goal_id', $goal->id)
-                                        ->whereDate('date', Carbon::today())
-                                        ->exists();
-            $nextCheckinAt = $dailyCheckinExists ? Carbon::tomorrow()->format('d/m/Y') : Carbon::today()->format('d/m/Y');
+            if ($currentStatus === 'active') {
+                $weekStart = Carbon::now()->startOfWeek();
+                $weekEnd = Carbon::now()->endOfWeek();
+                $weeklyCheckinsThisWeek = Checkin::where('goal_id', $goal->id)
+                                                ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+                                                ->count();
+                $weeklyRemaining = max(0, $goal->times_per_week - $weeklyCheckinsThisWeek);
+                
+                // Calculate next checkin
+                $dailyCheckinExists = Checkin::where('goal_id', $goal->id)
+                                            ->whereDate('date', Carbon::today())
+                                            ->exists();
+                $nextCheckinAt = $dailyCheckinExists ? Carbon::tomorrow()->format('d/m/Y') : Carbon::today()->format('d/m/Y');
+            }
             
-            return [
+            $goalData = [
                 'id' => $goal->id,
                 'user_id' => $goal->user_id,
                 'title' => $goal->title,
@@ -133,9 +138,14 @@ class GoalController extends Controller
                 'end_date' => $goalEndDate->format('d/m/Y'),
                 'progress' => $stats['progress'],
                 'stake' => $stats['stake'],
-                'next_checkin_at' => $nextCheckinAt,
-                'weekly_remaining' => $weeklyRemaining,
             ];
+            
+            if ($currentStatus === 'active') {
+                $goalData['next_checkin_at'] = $nextCheckinAt;
+                $goalData['weekly_remaining'] = $weeklyRemaining;
+            }
+            
+            return $goalData;
         });
 
         return response()->json([
