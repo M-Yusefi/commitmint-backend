@@ -14,40 +14,26 @@ class GoalController extends Controller
     {
         $allCheckins = Checkin::where('goal_id', $goal->id)->get();
         $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
-        $completedCheckins = $allCheckins->count();
+        $actualCheckins = $allCheckins->count();
         
-        $progressValue = $totalCheckins > 0 ? round($completedCheckins / $totalCheckins, 6) : 0;
+        $progressValue = $totalCheckins > 0 ? round($actualCheckins / $totalCheckins, 6) : 0;
         
         $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
         $completedCount = $allCheckins->where('done', true)->count();
-        $failedFromCheckins = $allCheckins->where('done', false)->count();
+        $failedCount = $allCheckins->where('done', false)->count();
+        $missedCheckins = $totalCheckins - $actualCheckins;
+        
         $earned = $completedCount * $stakePerCheckin;
+        $lostFromFailed = $failedCount * $stakePerCheckin;
+        $lostFromMissed = $missedCheckins * $stakePerCheckin;
+        $totalLost = $lostFromFailed + $lostFromMissed;
         
-        // Calculate missed days (days without any checkin)
-        $goalCreatedDate = Carbon::parse($goal->created_at)->startOfDay();
-        $today = Carbon::today();
-        $missedDays = 0;
-        
-        for ($date = $goalCreatedDate; $date->lte($today); $date->addDay()) {
-            $checkinExists = $allCheckins->where('date', $date->toDateString())->count() > 0;
-            if (!$checkinExists) {
-                $missedDays++;
-            }
-        }
-        
-        // If goal is completed, add missed days to failed count
-        $missedCount = $failedFromCheckins;
-        $lostFromMissedDays = $missedDays * $stakePerCheckin;
-        
-        if ($goal->status === 'completed') {
-            $missedCount = $failedFromCheckins + $missedDays;
-        }
-        
-        $lost = $missedCount * $stakePerCheckin;
+        // Calculate success percentage based on completed vs total expected
+        $successPercentage = $totalCheckins > 0 ? round(($completedCount / $totalCheckins) * 100, 2) : 0;
         
         return [
             'progress' => [
-                'completed' => $completedCheckins,
+                'completed' => $actualCheckins,
                 'total' => $totalCheckins,
                 'progress_value' => $progressValue,
             ],
@@ -55,12 +41,14 @@ class GoalController extends Controller
                 'total_stake' => $goal->stake_amount,
                 'stake_per_checkin' => round($stakePerCheckin, 2),
                 'completed_count' => $completedCount,
-                'missed_count' => intval($missedCount),
+                'failed_count' => $failedCount,
+                'missed_checkins' => $missedCheckins,
                 'earned' => round($earned, 2),
-                'lost' => round($lost, 2),
-                'lost_from_missed_days' => round($lostFromMissedDays, 2),
+                'lost_from_failed' => round($lostFromFailed, 2),
+                'lost_from_missed' => round($lostFromMissed, 2),
+                'lost' => round($totalLost, 2),
+                'success_percentage' => $successPercentage,
             ],
-            'missed_days' => $missedDays,
         ];
     }
 
@@ -145,7 +133,6 @@ class GoalController extends Controller
                 'end_date' => $goalEndDate->format('d/m/Y'),
                 'progress' => $stats['progress'],
                 'stake' => $stats['stake'],
-                'missed_days' => $stats['missed_days'],
                 'next_checkin_at' => $nextCheckinAt,
                 'weekly_remaining' => $weeklyRemaining,
             ];
