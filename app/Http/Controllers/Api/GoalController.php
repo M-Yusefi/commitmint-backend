@@ -16,7 +16,12 @@ class GoalController extends Controller
         $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
         $actualCheckins = $allCheckins->count();
         
-        $progressValue = $totalCheckins > 0 ? round($actualCheckins / $totalCheckins, 6) : 0;
+        // Ensure progress_value is between 0.0 and 1.0
+        $progressValue = 0.0;
+        if ($totalCheckins > 0) {
+            $progressValue = $actualCheckins / $totalCheckins;
+            $progressValue = min(1.0, max(0.0, $progressValue));
+        }
         
         $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
         $completedCount = $allCheckins->where('done', true)->count();
@@ -28,14 +33,18 @@ class GoalController extends Controller
         $lostFromMissed = $missedCheckins * $stakePerCheckin;
         $totalLost = $lostFromFailed + $lostFromMissed;
         
-        // Calculate success percentage based on completed vs total expected
-        $successPercentage = $totalCheckins > 0 ? round(($completedCount / $totalCheckins) * 100, 2) : 0;
+        // Calculate success percentage based on completed vs total expected (0-100)
+        $successPercentage = 0.0;
+        if ($totalCheckins > 0) {
+            $successPercentage = ($completedCount / $totalCheckins) * 100;
+            $successPercentage = min(100.0, max(0.0, $successPercentage));
+        }
         
         return [
             'progress' => [
                 'completed' => $actualCheckins,
                 'total' => $totalCheckins,
-                'progress_value' => $progressValue,
+                'progress_value' => round($progressValue, 6),
             ],
             'stake' => [
                 'total_stake' => $goal->stake_amount,
@@ -47,7 +56,7 @@ class GoalController extends Controller
                 'lost_from_failed' => round($lostFromFailed, 2),
                 'lost_from_missed' => round($lostFromMissed, 2),
                 'lost' => round($totalLost, 2),
-                'success_percentage' => $successPercentage,
+                'success_percentage' => round($successPercentage, 2),
             ],
         ];
     }
