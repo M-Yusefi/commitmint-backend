@@ -78,10 +78,13 @@ class GoalController extends Controller
             'status'          => 'active'
         ]);
 
+        $goalEndDate = Carbon::parse($goal->created_at)->addWeeks($goal->duration_weeks);
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Goal created successfully.',
             'goal'    => $goal,
+            'end_date' => $goalEndDate->format('d/m/Y'),
         ], 201);
     }
     
@@ -94,6 +97,19 @@ class GoalController extends Controller
 
         $goalsWithStats = $goals->map(function($goal) {
             $stats = $this->calculateGoalStats($goal);
+            
+            // Calculate goal end date
+            $goalCreatedDate = Carbon::parse($goal->created_at);
+            $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
+            $today = Carbon::today();
+            
+            // Update status to 'completed' if duration has passed
+            $currentStatus = $goal->status;
+            if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+                $goal->status = 'completed';
+                $goal->save();
+                $currentStatus = 'completed';
+            }
             
             // Calculate weekly remaining
             $weekStart = Carbon::now()->startOfWeek();
@@ -116,9 +132,10 @@ class GoalController extends Controller
                 'times_per_week' => $goal->times_per_week,
                 'duration_weeks' => $goal->duration_weeks,
                 'stake_amount' => $goal->stake_amount,
-                'status' => $goal->status,
+                'status' => $currentStatus,
                 'created_at' => $goal->created_at,
                 'updated_at' => $goal->updated_at,
+                'end_date' => $goalEndDate->format('d/m/Y'),
                 'progress' => $stats['progress'],
                 'stake' => $stats['stake'],
                 'missed_days' => $stats['missed_days'],

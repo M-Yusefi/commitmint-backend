@@ -113,17 +113,34 @@ class CheckinController extends Controller
             'reason'       => $validated['reason'] ?? null,
         ]);
 
+        // Check if goal should be marked as completed
+        $goalCreatedDate = Carbon::parse($goal->created_at);
+        $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
+        $today = Carbon::today();
+        
+        $goalStatus = $goal->status;
+        $goalCompleted = false;
+        
+        if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+            $goal->status = 'completed';
+            $goal->save();
+            $goalStatus = 'completed';
+            $goalCompleted = true;
+        }
+
         $stats = $this->calculateGoalStats($goal);
 
         return response()->json([
             'status'            => 'success',
-            'message'           => 'Check-in saved successfully.',
+            'message'           => $goalCompleted ? 'Check-in saved successfully. Goal completed!' : 'Check-in saved successfully.',
             'checkin'           => $checkIn,
             'next_checkin_at'   => $tomorrow->format('d/m/Y'),
             'weekly_remaining'  => max(0, $goal->times_per_week - ($weeklyCheckins + 1)),
             'progress'          => $stats['progress'],
             'stake'             => $stats['stake'],
             'missed_days'       => $stats['missed_days'],
+            'goal_status'       => $goalStatus,
+            'goal_completed'    => $goalCompleted,
         ], 201);    
     }
 
@@ -180,6 +197,16 @@ class CheckinController extends Controller
             ], 403);
         }
 
+        // Check if goal should be marked as completed
+        $goalCreatedDate = Carbon::parse($goal->created_at);
+        $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
+        $today = Carbon::today();
+        
+        if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+            $goal->status = 'completed';
+            $goal->save();
+        }
+
         $allCheckins = Checkin::where('goal_id', $goal->id)->get();
         $totalCheckins = count($allCheckins);
 
@@ -220,6 +247,7 @@ class CheckinController extends Controller
             ],
             'progress'  => $stats['progress'],
             'stake'     => $stats['stake'],
+            'end_date'  => $goalEndDate->format('d/m/Y'),
         ]);
     }
 }
