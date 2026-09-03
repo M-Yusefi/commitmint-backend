@@ -15,6 +15,12 @@ class CheckinController extends Controller
         $allCheckins = Checkin::where('goal_id', $goal->id)->get();
         $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
         $actualCheckins = $allCheckins->count();
+        $today = Carbon::today();
+        $goalCreatedDate = Carbon::parse($goal->created_at)->startOfDay();
+        $goalEndDate = $goalCreatedDate->copy()->addWeeks($goal->duration_weeks);
+        $elapsedWeeks = $today->gte($goalEndDate)
+            ? $goal->duration_weeks
+            : min($goal->duration_weeks, intdiv(max(0, $goalCreatedDate->diffInDays($today)), 7));
         
         // Ensure progress_value is between 0.0 and 1.0
         $progressValue = 0.0;
@@ -26,17 +32,19 @@ class CheckinController extends Controller
         $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
         $completedCount = $allCheckins->where('done', true)->count();
         $failedCount = $allCheckins->where('done', false)->count();
-        $missedCheckins = $totalCheckins - $actualCheckins;
+        $expectedCheckins = $elapsedWeeks * $goal->times_per_week;
+        $missedCheckins = max(0, min($totalCheckins, $expectedCheckins - $actualCheckins));
         
         $earned = $completedCount * $stakePerCheckin;
         $lostFromFailed = $failedCount * $stakePerCheckin;
         $lostFromMissed = $missedCheckins * $stakePerCheckin;
         $totalLost = $lostFromFailed + $lostFromMissed;
         
-        // Calculate success percentage based on completed vs total expected (0-100)
+        // Calculate success percentage based on evaluated check-ins (0-100)
         $successPercentage = 0.0;
-        if ($totalCheckins > 0) {
-            $successPercentage = ($completedCount / $totalCheckins) * 100;
+        $evaluatedCheckins = $completedCount + $failedCount + $missedCheckins;
+        if ($evaluatedCheckins > 0) {
+            $successPercentage = ($completedCount / $evaluatedCheckins) * 100;
             $successPercentage = min(100.0, max(0.0, $successPercentage));
         }
         
@@ -56,7 +64,7 @@ class CheckinController extends Controller
                 'lost_from_failed' => round($lostFromFailed, 2),
                 'lost_from_missed' => round($lostFromMissed, 2),
                 'lost' => round($totalLost, 2),
-                'success_percentage' => round($successPercentage, 2),
+                'success_percentage' => round($successPercentage),
             ],
         ];
     }
