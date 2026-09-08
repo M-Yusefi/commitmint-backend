@@ -149,12 +149,19 @@ class GoalController extends Controller
                 'times_per_week' => $goal->times_per_week,
                 'duration_weeks' => $goal->duration_weeks,
                 'stake_amount' => $goal->stake_amount,
+                'agreed_to_rules' => $goal->agreed_to_rules,
                 'status' => $currentStatus,
                 'created_at' => $goal->created_at,
                 'updated_at' => $goal->updated_at,
                 'end_date' => $goalEndDate->format('d/m/Y'),
                 'progress' => $stats['progress'],
                 'stake' => $stats['stake'],
+                'completed' => $stats['progress']['completed'],
+                'total' => $stats['progress']['total'],
+                'progress_value' => $stats['progress']['progress_value'],
+                'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
+                'earned' => $stats['stake']['earned'],
+                'lost' => $stats['stake']['lost'],
             ];
             
             if ($currentStatus === 'active') {
