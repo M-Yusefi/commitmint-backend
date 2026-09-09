@@ -146,28 +146,24 @@ class GoalController extends Controller
                 'id' => $goal->id,
                 'user_id' => $goal->user_id,
                 'title' => $goal->title,
-                'times_per_week' => $goal->times_per_week,
                 'duration_weeks' => $goal->duration_weeks,
+                'times_per_week' => $goal->times_per_week,
                 'stake_amount' => $goal->stake_amount,
-                'agreed_to_rules' => $goal->agreed_to_rules,
-                'status' => $currentStatus,
+                'agreed_to_rules' => (bool) $goal->agreed_to_rules,
                 'created_at' => $goal->created_at,
                 'updated_at' => $goal->updated_at,
-                'end_date' => $goalEndDate->format('d/m/Y'),
-                'progress' => $stats['progress'],
-                'stake' => $stats['stake'],
+                'status' => $currentStatus,
                 'completed' => $stats['progress']['completed'],
                 'total' => $stats['progress']['total'],
                 'progress_value' => $stats['progress']['progress_value'],
                 'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
                 'earned' => $stats['stake']['earned'],
                 'lost' => $stats['stake']['lost'],
+                'weekly_remaining' => $weeklyRemaining ?? 0,
+                'next_checkin_at' => $nextCheckinAt ?? null,
+                'progress' => $stats['progress'],
+                'stake' => $stats['stake'],
             ];
-            
-            if ($currentStatus === 'active') {
-                $goalData['next_checkin_at'] = $nextCheckinAt;
-                $goalData['weekly_remaining'] = $weeklyRemaining;
-            }
             
             return $goalData;
         });

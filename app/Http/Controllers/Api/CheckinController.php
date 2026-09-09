@@ -22,7 +22,6 @@ class CheckinController extends Controller
             ? $goal->duration_weeks
             : min($goal->duration_weeks, intdiv(max(0, $goalCreatedDate->diffInDays($today)), 7));
         
-        // Ensure progress_value is between 0.0 and 1.0
         $progressValue = 0.0;
         if ($totalCheckins > 0) {
             $progressValue = $actualCheckins / $totalCheckins;
@@ -148,10 +147,16 @@ class CheckinController extends Controller
             'checkin'           => $checkIn,
             'next_checkin_at'   => $tomorrow->format('d/m/Y'),
             'weekly_remaining'  => max(0, $goal->times_per_week - ($weeklyCheckins + 1)),
-            'progress'          => $stats['progress'],
-            'stake'             => $stats['stake'],
+            'completed' => $stats['progress']['completed'],
+            'total' => $stats['progress']['total'],
+            'progress_value' => $stats['progress']['progress_value'],
+            'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
+            'earned' => $stats['stake']['earned'],
+            'lost' => $stats['stake']['lost'],
             'goal_status'       => $goalStatus,
             'goal_completed'    => $goalCompleted,
+            'progress'          => $stats['progress'],
+            'stake'             => $stats['stake'],
         ], 201);    
     }
 
@@ -245,8 +250,17 @@ class CheckinController extends Controller
 
         return response()->json([
             'status'   => 'success',
+            'message'  => 'Goal stats retrieved successfully.',
             'goal'     => $goal,
-            'stats'    => [
+            'end_date' => $goalEndDate->format('d/m/Y'),
+            'completed' => $stats['progress']['completed'],
+            'total' => $stats['progress']['total'],
+            'progress_value' => $stats['progress']['progress_value'],
+            'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
+            'earned' => $stats['stake']['earned'],
+            'lost' => $stats['stake']['lost'],
+            
+            'stats' => [
                 'total_checkins'    => $totalCheckins,
                 'completed_goals'   => $completedGoals,
                 'completion_rate'   => $completionRate . '%',
@@ -255,9 +269,9 @@ class CheckinController extends Controller
                 'avg_honesty'       => $avgHonesty,
                 'goal_progress'     => round($goalProgress, 2) . '%',
             ],
+            
             'progress'  => $stats['progress'],
             'stake'     => $stats['stake'],
-            'end_date'  => $goalEndDate->format('d/m/Y'),
         ]);
     }
 }
