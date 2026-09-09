@@ -22,44 +22,46 @@ class GoalController extends Controller
             ? $goal->duration_weeks
             : min($goal->duration_weeks, intdiv(max(0, $goalCreatedDate->diffInDays($today)), 7));
         
-        // Ensure progress_value is between 0.0 and 1.0
-        $progressValue = 0.0;
-        if ($totalCheckins > 0) {
-            $progressValue = $actualCheckins / $totalCheckins;
-            $progressValue = min(1.0, max(0.0, $progressValue));
-        }
-        
         $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
-        $completedCount = $allCheckins->where('done', true)->count();
-        $failedCount = $allCheckins->where('done', false)->count();
+        $successCheckins = $allCheckins->where('done', true)->count();
+        $failedCheckins = $allCheckins->where('done', false)->count();
         $expectedCheckins = $elapsedWeeks * $goal->times_per_week;
         $missedCheckins = max(0, min($totalCheckins, $expectedCheckins - $actualCheckins));
         
-        $earned = $completedCount * $stakePerCheckin;
-        $lostFromFailed = $failedCount * $stakePerCheckin;
+        $earned = $successCheckins * $stakePerCheckin;
+        $lostFromFailed = $failedCheckins * $stakePerCheckin;
         $lostFromMissed = $missedCheckins * $stakePerCheckin;
         $totalLost = $lostFromFailed + $lostFromMissed;
         
+        // Evaluated check-ins = completed + failed + missed (for progress bar calculation)
+        $evaluatedCheckins = $successCheckins + $failedCheckins + $missedCheckins;
+
+        // Calculate progress value based on evaluated check-ins (for progress bar)
+        $progressValue = 0.0;
+        if ($totalCheckins > 0) {
+            $progressValue = $evaluatedCheckins / $totalCheckins;
+            $progressValue = min(1.0, max(0.0, $progressValue));
+        }
+
         // Calculate success percentage based on evaluated check-ins (0-100)
         $successPercentage = 0.0;
-        $evaluatedCheckins = $completedCount + $failedCount + $missedCheckins;
         if ($evaluatedCheckins > 0) {
-            $successPercentage = ($completedCount / $evaluatedCheckins) * 100;
+            $successPercentage = ($successCheckins / $evaluatedCheckins) * 100;
             $successPercentage = min(100.0, max(0.0, $successPercentage));
         }
         
         return [
             'progress' => [
-                'completed' => $actualCheckins,
                 'total' => $totalCheckins,
+                'all_checkins' => $evaluatedCheckins,
+                'success_checkins' => $successCheckins,
+                'failed_checkins' => $failedCheckins,
+                'missed_checkins' => $missedCheckins,
                 'progress_value' => round($progressValue, 6),
             ],
             'stake' => [
                 'total_stake' => $goal->stake_amount,
                 'stake_per_checkin' => round($stakePerCheckin, 2),
-                'completed_count' => $completedCount,
-                'failed_count' => $failedCount,
-                'missed_checkins' => $missedCheckins,
                 'earned' => round($earned, 2),
                 'lost_from_failed' => round($lostFromFailed, 2),
                 'lost_from_missed' => round($lostFromMissed, 2),
@@ -153,16 +155,20 @@ class GoalController extends Controller
                 'created_at' => $goal->created_at,
                 'updated_at' => $goal->updated_at,
                 'status' => $currentStatus,
-                'completed' => $stats['progress']['completed'],
+
                 'total' => $stats['progress']['total'],
+                'all_checkins' => $stats['progress']['all_checkins'],
+                'success_checkins' => $stats['progress']['success_checkins'],
+                'failed_checkins'  => $stats['progress']['failed_checkins'],
+                'missed_checkins'  => $stats['progress']['missed_checkins'],
                 'progress_value' => $stats['progress']['progress_value'],
+
                 'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
                 'earned' => $stats['stake']['earned'],
                 'lost' => $stats['stake']['lost'],
                 'weekly_remaining' => $weeklyRemaining ?? 0,
                 'next_checkin_at' => $nextCheckinAt ?? null,
-                'progress' => $stats['progress'],
-                'stake' => $stats['stake'],
+                'success_percentage' => $stats['stake']['success_percentage'],
             ];
             
             return $goalData;
