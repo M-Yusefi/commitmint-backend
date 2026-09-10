@@ -46,8 +46,8 @@ class GoalController extends Controller
         // Calculate success percentage based on evaluated check-ins (0-100)
         $successPercentage = 0.0;
         if ($evaluatedCheckins > 0) {
-            $successPercentage = ($successCheckins / $evaluatedCheckins) * 100;
-            $successPercentage = min(100.0, max(0.0, $successPercentage));
+            $successPercentage = $successCheckins / $evaluatedCheckins;
+            $successPercentage = min(1.0, max(0.0, $successPercentage));
         }
         
         return [
@@ -66,7 +66,8 @@ class GoalController extends Controller
                 'lost_from_failed' => round($lostFromFailed, 2),
                 'lost_from_missed' => round($lostFromMissed, 2),
                 'lost' => round($totalLost, 2),
-                'success_percentage' => round($successPercentage),
+                'success_percentage' => round($successPercentage * 100),
+                'success_percentage_value' => round($successPercentage, 2),
             ],
         ];
     }
@@ -169,6 +170,7 @@ class GoalController extends Controller
                 'weekly_remaining' => $weeklyRemaining ?? 0,
                 'next_checkin_at' => $nextCheckinAt ?? null,
                 'success_percentage' => $stats['stake']['success_percentage'],
+                'success_percentage_value' => $stats['stake']['success_percentage_value'],
             ];
             
             return $goalData;
