@@ -131,18 +131,32 @@ class GoalController extends Controller
             $nextCheckinAt = null;
             
             if ($currentStatus === 'active') {
-                $weekStart = Carbon::now()->startOfWeek();
-                $weekEnd = Carbon::now()->endOfWeek();
-                $weeklyCheckinsThisWeek = Checkin::where('goal_id', $goal->id)
-                                                ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
-                                                ->count();
-                $weeklyRemaining = max(0, $goal->times_per_week - $weeklyCheckinsThisWeek);
+                $today = Carbon::today();
+                $goalStartDate = Carbon::parse($goal->created_at)->startOfDay();
+                
+                // Welke week van het goal zitten we in?
+                $weekNumber = intdiv($today->diffInDays($goalStartDate), 7);
+                $currentWeekStart = $goalStartDate->copy()->addWeeks($weekNumber);
+                
+                // Hoeveel dagen zijn voorbij in deze week
+                $daysInCurrentWeek = $today->diffInDays($currentWeekStart) + 1;
+                
+                // Checkins deze week
+                $completedCheckins = Checkin::where('goal_id', $goal->id)
+                                            ->whereBetween('date', [$currentWeekStart->toDateString(), $today->toDateString()])
+                                            ->count();
+                
+                // Gemiste checkins
+                $missedCheckinsThisWeek = max(0, $daysInCurrentWeek - $completedCheckins);
+                
+                // Weekly remaining
+                $weeklyRemaining = max(0, $goal->times_per_week - $completedCheckins - $missedCheckinsThisWeek);
                 
                 // Calculate next checkin
                 $dailyCheckinExists = Checkin::where('goal_id', $goal->id)
-                                            ->whereDate('date', Carbon::today())
+                                            ->whereDate('date', $today)
                                             ->exists();
-                $nextCheckinAt = $dailyCheckinExists ? Carbon::tomorrow()->format('d/m/Y') : Carbon::today()->format('d/m/Y');
+                $nextCheckinAt = $dailyCheckinExists ? $today->addDay()->format('d/m/Y') : $today->format('d/m/Y');
             }
             
             $goalData = [
