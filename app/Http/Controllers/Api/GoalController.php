@@ -118,9 +118,9 @@ class GoalController extends Controller
             $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
             $today = Carbon::today();
             
-            // Update status to 'completed' if duration has passed
+            // Update status to 'completed' if duration has passed or the total required check-ins were reached
             $currentStatus = $goal->status;
-            if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+            if (($today->gte($goalEndDate) || $stats['progress']['all_checkins'] >= $stats['progress']['total']) && $goal->status !== 'completed') {
                 $goal->status = 'completed';
                 $goal->save();
                 $currentStatus = 'completed';
@@ -159,7 +159,14 @@ class GoalController extends Controller
                 $nextCheckinAt = $dailyCheckinExists ? $today->addDay()->format('d/m/Y') : $today->format('d/m/Y');
             }
             
+            $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+            $totalCheckins = $allCheckins->count();
+            $avgProductivityValue = $totalCheckins > 0 ? round($allCheckins->avg('productivity') / 10, 2) : 0;
+            $avgFocusValue = $totalCheckins > 0 ? round($allCheckins->avg('focus') / 10, 2) : 0;
+            $avgHonestyValue = $totalCheckins > 0 ? round($allCheckins->avg('honesty') / 10, 2) : 0;
+
             $goalData = [
+                // Algemene Goal Data
                 'id' => $goal->id,
                 'user_id' => $goal->user_id,
                 'title' => $goal->title,
@@ -170,21 +177,28 @@ class GoalController extends Controller
                 'created_at' => $goal->created_at,
                 'updated_at' => $goal->updated_at,
                 'status' => $currentStatus,
-
+                
+                // Check-in en Progress_Value
                 'total' => $stats['progress']['total'],
                 'all_checkins' => $stats['progress']['all_checkins'],
                 'success_checkins' => $stats['progress']['success_checkins'],
                 'failed_checkins'  => $stats['progress']['failed_checkins'],
                 'missed_checkins'  => $stats['progress']['missed_checkins'],
                 'progress_value' => $stats['progress']['progress_value'],
-
+                
+                // Stake, Next chcek-in en 
                 'stake_per_checkin' => $stats['stake']['stake_per_checkin'],
                 'earned' => $stats['stake']['earned'],
                 'lost' => $stats['stake']['lost'],
                 'weekly_remaining' => $weeklyRemaining ?? 0,
                 'next_checkin_at' => $nextCheckinAt ?? null,
                 'success_percentage' => $stats['stake']['success_percentage'],
+                
+                // Gebruiker Stats
                 'success_percentage_value' => $stats['stake']['success_percentage_value'],
+                'avg_productivity_value' => $avgProductivityValue,
+                'avg_focus_value' => $avgFocusValue,
+                'avg_honesty_value' => $avgHonestyValue,
             ];
             
             return $goalData;

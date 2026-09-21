@@ -127,22 +127,22 @@ class CheckinController extends Controller
             'reason'       => $validated['reason'] ?? null,
         ]);
 
-        // Check if goal should be marked as completed
         $goalCreatedDate = Carbon::parse($goal->created_at);
         $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
         $today = Carbon::today();
-        
+
+        $stats = $this->calculateGoalStats($goal);
+
+        // Check if goal should be marked as completed based on time or required total check-ins
         $goalStatus = $goal->status;
         $goalCompleted = false;
-        
-        if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+
+        if (($today->gte($goalEndDate) || $stats['progress']['all_checkins'] >= $stats['progress']['total']) && $goal->status !== 'completed') {
             $goal->status = 'completed';
             $goal->save();
             $goalStatus = 'completed';
             $goalCompleted = true;
         }
-
-        $stats = $this->calculateGoalStats($goal);
 
         return response()->json([
             'status'            => 'success',
@@ -220,12 +220,15 @@ class CheckinController extends Controller
             ], 403);
         }
 
-        // Check if goal should be marked as completed
         $goalCreatedDate = Carbon::parse($goal->created_at);
         $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
         $today = Carbon::today();
-        
-        if ($today->gte($goalEndDate) && $goal->status !== 'completed') {
+
+        $allCheckins = Checkin::where('goal_id', $goal->id)->get();
+        $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
+        $stats = $this->calculateGoalStats($goal);
+
+        if (($today->gte($goalEndDate) || $stats['progress']['all_checkins'] >= $totalCheckins) && $goal->status !== 'completed') {
             $goal->status = 'completed';
             $goal->save();
         }
