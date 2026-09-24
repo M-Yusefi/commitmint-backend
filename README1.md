@@ -1,3 +1,9 @@
+## Leerdoelen
+
+1. Goals ophalen en opslaan in de appState
+2. Goals Filteren op status 
+3. Gefilterde Goals weergen in History pagina
+
 ## Planning komende week
 
 
@@ -13,6 +19,6 @@ Daarna ga ik verder met de Settings-pagina. De UI wordt aangepast en verbeterd. 
 
 Na het aanpassen van beide pagina's wil ik de functionaliteiten testen en eventuele kleine bugs oplossen. Als alles goed werkt, controleer ik de laatste onderdelen van het project en werk ik de benodigde documentatie bij.
 
-### Project opleveren
+### Sprint 1 opleveren 
 
-Als laatste wil ik het project volledig controleren en opleveren. Hierbij controleer ik of de belangrijkste functionaliteiten werken en of alle benodigde onderdelen en documentatie aanwezig zijn.
+Als laatste wil ik het Sprint 1 controleren en opleveren. Hierbij controleer ik of de belangrijkste functionaliteiten werken.
