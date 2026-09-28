@@ -113,12 +113,10 @@ class GoalController extends Controller
         $goalsWithStats = $goals->map(function($goal) {
             $stats = $this->calculateGoalStats($goal);
             
-            // Calculate goal end date
             $goalCreatedDate = Carbon::parse($goal->created_at);
             $goalEndDate = $goalCreatedDate->addWeeks($goal->duration_weeks);
             $today = Carbon::today();
             
-            // Update status to 'completed' if duration has passed or the total required check-ins were reached
             $currentStatus = $goal->status;
             if (($today->gte($goalEndDate) || $stats['progress']['all_checkins'] >= $stats['progress']['total']) && $goal->status !== 'completed') {
                 $goal->status = 'completed';
@@ -126,7 +124,6 @@ class GoalController extends Controller
                 $currentStatus = 'completed';
             }
             
-            // Calculate weekly remaining and next checkin only for active goals
             $weeklyRemaining = null;
             $nextCheckinAt = null;
             
@@ -166,7 +163,7 @@ class GoalController extends Controller
             $avgHonestyValue = $totalCheckins > 0 ? round($allCheckins->avg('honesty') / 10, 2) : 0;
 
             $goalData = [
-                // Algemene Goal Data
+                // Algemene Goal Data 1234
                 'id' => $goal->id,
                 'user_id' => $goal->user_id,
                 'title' => $goal->title,
