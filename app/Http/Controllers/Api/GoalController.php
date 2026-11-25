@@ -14,12 +14,14 @@ class GoalController extends Controller
     {
         $totalCheckins = $goal->times_per_week * $goal->duration_weeks;
         $actualCheckins = $allCheckins->count();
+
         $today = Carbon::today();
         $goalCreatedDate = Carbon::parse($goal->created_at)->startOfDay();
         $goalEndDate = $goalCreatedDate->copy()->addWeeks($goal->duration_weeks);
         $elapsedWeeks = $today->gte($goalEndDate)
             ? $goal->duration_weeks
             : min($goal->duration_weeks, intdiv(max(0, $goalCreatedDate->diffInDays($today)), 7));
+        
         
         $stakePerCheckin = $totalCheckins > 0 ? $goal->stake_amount / $totalCheckins : 0;
         $successCheckins = $allCheckins->where('done', true)->count();
